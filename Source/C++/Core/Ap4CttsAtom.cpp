@@ -126,6 +126,16 @@ AP4_CttsAtom::AddEntry(AP4_UI32 count, AP4_UI32 cts_offset)
 {
     m_Entries.Append(AP4_CttsTableEntry(count, cts_offset));
     m_Size32 += 8;
+
+    // offsets are stored as unsigned 32-bit values, but they may represent
+    // negative values (in two's complement) when the composition time of a
+    // sample is earlier than its decoding time. Negative offsets can only be
+    // expressed with version 1 of the atom, so upgrade the version if needed.
+    // (non-negative offsets keep the default version 0)
+    if ((AP4_SI32)cts_offset < 0 && m_Version == 0) {
+        m_Version = 1;
+    }
+
     return AP4_SUCCESS;
 }
 
