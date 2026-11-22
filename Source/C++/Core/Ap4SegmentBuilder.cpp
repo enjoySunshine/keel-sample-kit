@@ -241,6 +241,56 @@ AP4_VideoSegmentBuilder::SortSamples(SampleOrder* array, unsigned int n)
 }
 
 /*----------------------------------------------------------------------
+|   AP4_VideoSegmentBuilder::AddAccessUnit
+|
+|   Package one access unit (a set of NAL units, with the NAL unit headers
+|   already stripped of their start codes or length prefixes) as one sample.
+|   Both the AVC and HEVC capture paths use this, so that the sample
+|   boundaries and the DTS/duration computation are identical for both.
++---------------------------------------------------------------------*/
+AP4_Result
+AP4_VideoSegmentBuilder::AddAccessUnit(AP4_Array<AP4_DataBuffer*>& nal_units,
+                                       bool                        is_sync,
+                                       AP4_UI32                    decode_order,
+                                       AP4_UI32                    display_order)
+{
+    // compute the total size of the sample data
+    unsigned int sample_data_size = 0;
+    for (unsigned int i=0; i<nal_units.ItemCount(); i++) {
+        sample_data_size += 4+nal_units[i]->GetDataSize();
+    }
+
+    // format the sample data, with a 4-byte length prefix before each NAL unit
+    AP4_MemoryByteStream* sample_data = new AP4_MemoryByteStream(sample_data_size);
+    for (unsigned int i=0; i<nal_units.ItemCount(); i++) {
+        sample_data->WriteUI32(nal_units[i]->GetDataSize());
+        sample_data->Write(nal_units[i]->GetData(), nal_units[i]->GetDataSize());
+    }
+
+    // compute the timestamp in a drift-less manner
+    AP4_UI32 duration = 0;
+    AP4_UI64 dts      = 0;
+    if (m_Timescale != 0 && m_FramesPerSecond != 0.0) {
+        AP4_UI64 this_sample_time = m_MediaStartTime+m_MediaDuration;
+        AP4_UI64 next_sample_time = (AP4_UI64)((double)m_Timescale*(double)(m_SampleStartNumber+m_Samples.ItemCount()+1)/m_FramesPerSecond);
+        duration = (AP4_UI32)(next_sample_time-this_sample_time);
+        dts      = (AP4_UI64)((double)m_Timescale/m_FramesPerSecond*(double)m_Samples.ItemCount());
+    }
+
+    // create a new sample and add it to the list
+    AP4_Sample sample(*sample_data, 0, sample_data_size, duration, 0, dts, 0, is_sync);
+    AP4_Result result = AddSample(sample);
+    sample_data->Release();
+    if (AP4_FAILED(result)) return result;
+
+    // remember the sample order
+    result = m_SampleOrders.Append(SampleOrder(decode_order, display_order));
+    if (AP4_FAILED(result)) return result;
+
+    return AP4_SUCCESS;
+}
+
+/*----------------------------------------------------------------------
 |   AP4_VideoSegmentBuilder::WriteVideoInitSegment
 +---------------------------------------------------------------------*/
 AP4_Result
@@ -391,46 +441,21 @@ AP4_AvcSegmentBuilder::Feed(const void* data,
     
     // check if we have an access unit
     if (access_unit_info.nal_units.ItemCount()) {
-        // compute the total size of the sample data
-        unsigned int sample_data_size = 0;
-        for (unsigned int i=0; i<access_unit_info.nal_units.ItemCount(); i++) {
-            sample_data_size += 4+access_unit_info.nal_units[i]->GetDataSize();
-        }
-        
-        // format the sample data
-        AP4_MemoryByteStream* sample_data = new AP4_MemoryByteStream(sample_data_size);
-        for (unsigned int i=0; i<access_unit_info.nal_units.ItemCount(); i++) {
-            sample_data->WriteUI32(access_unit_info.nal_units[i]->GetDataSize());
-            sample_data->Write(access_unit_info.nal_units[i]->GetData(), access_unit_info.nal_units[i]->GetDataSize());
-        }
-        
-        // compute the timestamp in a drift-less manner
-        AP4_UI32 duration = 0;
-        AP4_UI64 dts      = 0;
-        if (m_Timescale !=0 && m_FramesPerSecond != 0.0) {
-            AP4_UI64 this_sample_time = m_MediaStartTime+m_MediaDuration;
-            AP4_UI64 next_sample_time = (AP4_UI64)((double)m_Timescale*(double)(m_SampleStartNumber+m_Samples.ItemCount()+1)/m_FramesPerSecond);
-            duration = (AP4_UI32)(next_sample_time-this_sample_time);
-            dts      = (AP4_UI64)((double)m_Timescale/m_FramesPerSecond*(double)m_Samples.ItemCount());
-        }
+        AP4_Result add_result = AddAccessUnit(access_unit_info.nal_units,
+                                              access_unit_info.is_idr,
+                                              access_unit_info.decode_order,
+                                              access_unit_info.display_order);
 
-        // create a new sample and add it to the list
-        AP4_Sample sample(*sample_data, 0, sample_data_size, duration, 0, dts, 0, access_unit_info.is_idr);
-        AddSample(sample);
-        sample_data->Release();
-        
-        // remember the sample order
-        m_SampleOrders.Append(SampleOrder(access_unit_info.decode_order, access_unit_info.display_order));
-        
         // free the memory buffers
         for (unsigned int i=0; i<access_unit_info.nal_units.ItemCount(); i++) {
             delete access_unit_info.nal_units[i];
         }
         access_unit_info.nal_units.Clear();
-        
+
+        if (AP4_FAILED(add_result)) return add_result;
         return 1; // one access unit returned
     }
-    
+
     return AP4_SUCCESS;
 }
 
@@ -525,46 +550,21 @@ AP4_HevcSegmentBuilder::Feed(const void* data,
     
     // check if we have an access unit
     if (access_unit_info.nal_units.ItemCount()) {
-        // compute the total size of the sample data
-        unsigned int sample_data_size = 0;
-        for (unsigned int i=0; i<access_unit_info.nal_units.ItemCount(); i++) {
-            sample_data_size += 4+access_unit_info.nal_units[i]->GetDataSize();
-        }
-        
-        // format the sample data
-        AP4_MemoryByteStream* sample_data = new AP4_MemoryByteStream(sample_data_size);
-        for (unsigned int i=0; i<access_unit_info.nal_units.ItemCount(); i++) {
-            sample_data->WriteUI32(access_unit_info.nal_units[i]->GetDataSize());
-            sample_data->Write(access_unit_info.nal_units[i]->GetData(), access_unit_info.nal_units[i]->GetDataSize());
-        }
-        
-        // compute the timestamp in a drift-less manner
-        AP4_UI32 duration = 0;
-        AP4_UI64 dts      = 0;
-        if (m_Timescale !=0 && m_FramesPerSecond != 0.0) {
-            AP4_UI64 this_sample_time = m_MediaStartTime+m_MediaDuration;
-            AP4_UI64 next_sample_time = (AP4_UI64)((double)m_Timescale*(double)(m_SampleStartNumber+m_Samples.ItemCount()+1)/m_FramesPerSecond);
-            duration = (AP4_UI32)(next_sample_time-this_sample_time);
-            dts      = (AP4_UI64)((double)m_Timescale/m_FramesPerSecond*(double)m_Samples.ItemCount());
-        }
+        AP4_Result add_result = AddAccessUnit(access_unit_info.nal_units,
+                                              access_unit_info.is_random_access,
+                                              access_unit_info.decode_order,
+                                              access_unit_info.display_order);
 
-        // create a new sample and add it to the list
-        AP4_Sample sample(*sample_data, 0, sample_data_size, duration, 0, dts, 0, access_unit_info.is_random_access);
-        AddSample(sample);
-        sample_data->Release();
-        
-        // remember the sample order
-        m_SampleOrders.Append(SampleOrder(access_unit_info.decode_order, access_unit_info.display_order));
-        
         // free the memory buffers
         for (unsigned int i=0; i<access_unit_info.nal_units.ItemCount(); i++) {
             delete access_unit_info.nal_units[i];
         }
         access_unit_info.nal_units.Clear();
-        
+
+        if (AP4_FAILED(add_result)) return add_result;
         return 1; // one access unit returned
     }
-    
+
     return AP4_SUCCESS;
 }
 

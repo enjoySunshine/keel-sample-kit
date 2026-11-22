@@ -290,20 +290,53 @@ AP4_FragmentSampleTable::GetSampleChunkPosition(AP4_Ordinal  sample_index,
 /*----------------------------------------------------------------------
 |   AP4_FragmentSampleTable::GetSampleIndexForTimeStamp
 +---------------------------------------------------------------------*/
-AP4_Result 
-AP4_FragmentSampleTable::GetSampleIndexForTimeStamp(AP4_UI64     /*ts*/, 
+AP4_Result
+AP4_FragmentSampleTable::GetSampleIndexForTimeStamp(AP4_UI64     ts,
                                                     AP4_Ordinal& sample_index)
 {
-    sample_index = 0; // TODO
-    return AP4_SUCCESS;
+    // how many samples are there?
+    AP4_Cardinal sample_count = m_Samples.ItemCount();
+    if (sample_count == 0) return AP4_ERROR_NOT_ENOUGH_DATA;
+
+    // note: the samples in a fragment are in decoding order, so their
+    // decoding timestamps are increasing, but their composition timestamps
+    // may not be. We look up the sample using its decoding timeline (DTS and
+    // duration), which is the same convention used for non-fragmented samples.
+    for (AP4_Ordinal i=0; i<sample_count; i++) {
+        AP4_UI64 next_dts = m_Samples[i].GetDts() + m_Samples[i].GetDuration();
+        if (ts < next_dts) {
+            sample_index = i;
+            return AP4_SUCCESS;
+        }
+    }
+
+    // ts not in range of the table
+    return AP4_FAILURE;
 }
 
 /*----------------------------------------------------------------------
 |   AP4_FragmentSampleTable::GetNearestSyncSampleIndex
 +---------------------------------------------------------------------*/
-AP4_Ordinal  
-AP4_FragmentSampleTable::GetNearestSyncSampleIndex(AP4_Ordinal /*sample_index*/, bool /*before*/)
+AP4_Ordinal
+AP4_FragmentSampleTable::GetNearestSyncSampleIndex(AP4_Ordinal sample_index, bool before)
 {
-    return 0; // TODO
+    AP4_Cardinal sample_count = m_Samples.ItemCount();
+    if (sample_count == 0) return 0;
+
+    if (before) {
+        // look for the closest sync sample strictly before the given index
+        for (AP4_Ordinal i=sample_index; i>0; i--) {
+            if (m_Samples[i-1].IsSync()) return i-1;
+        }
+        // not found?
+        return 0;
+    } else {
+        if (sample_index >= sample_count) return sample_count;
+        for (AP4_Ordinal i=sample_index; i<sample_count; i++) {
+            if (m_Samples[i].IsSync()) return i;
+        }
+        // not found?
+        return sample_count;
+    }
 }
 

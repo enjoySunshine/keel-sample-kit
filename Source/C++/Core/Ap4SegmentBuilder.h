@@ -129,6 +129,10 @@ protected:
     
     // methods
     void SortSamples(SampleOrder* array, unsigned int n);
+    AP4_Result AddAccessUnit(AP4_Array<AP4_DataBuffer*>& nal_units,
+                             bool                        is_sync,
+                             AP4_UI32                    decode_order,
+                             AP4_UI32                    display_order);
     AP4_Result WriteVideoInitSegment(AP4_ByteStream&        stream,
                                      AP4_SampleDescription* sample_description,
                                      unsigned int           width,

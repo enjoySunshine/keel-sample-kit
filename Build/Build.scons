@@ -163,6 +163,7 @@ Executable('CryptoTest', source_dir='C++/Test/Crypto')
 Executable('AvcTrackWriterTest', source_dir='C++/Test/Avc')
 Executable('PassthroughWriterTest', source_dir='C++/Test/PassthroughWriter')
 Executable('TracksTest', source_dir='C++/Test/Tracks')
+Executable('SampleTimingTest', source_dir='C++/Test/SampleTiming')
 Executable('BenchmarksTest', source_dir='C++/Test/Benchmarks')
 Executable('LargeFilesTest', source_dir='C++/Test/LargeFiles')
 if 'AP4_BUILD_CONFIG_NO_SHARED_LIB' not in env:

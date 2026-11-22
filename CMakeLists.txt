@@ -108,6 +108,18 @@ foreach(app ${BENTO4_APPS})
 endforeach()
 endif(BUILD_APPS)
 
+# Tests
+option(BUILD_TESTS "Build test programs" OFF)
+if(BUILD_TESTS)
+  enable_testing()
+
+  # sample timing regression test: whole-file, fragment and capture paths
+  add_executable(sampletimingtest ${SOURCE_ROOT}/Test/SampleTiming/SampleTimingTest.cpp)
+  target_link_libraries(sampletimingtest ap4)
+  add_test(NAME sampletimingtest
+           COMMAND sampletimingtest ${CMAKE_CURRENT_SOURCE_DIR}/Test/Data/video-h264-001.mp4)
+endif(BUILD_TESTS)
+
 # Install
 include(GNUInstallDirs)
 set(config_install_dir "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}")

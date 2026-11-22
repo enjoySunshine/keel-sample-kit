@@ -1358,8 +1358,8 @@ AP4_HevcFrameParser::Feed(const AP4_UI08* nal_unit,
             DBG_PRINTF_2("PPS pps_id=%d, sps_id=%d", pps->pps_pic_parameter_set_id, pps->pps_seq_parameter_set_id);
             
             // keep the PPS with the NAL unit (this is optional)
-            AppendNalUnitData(nal_unit, nal_unit_size);
             CheckIfAccessUnitIsCompleted(access_unit_info);
+            AppendNalUnitData(nal_unit, nal_unit_size);
         } else if (nal_unit_type == AP4_HEVC_NALU_TYPE_SPS_NUT) {
             AP4_HevcSequenceParameterSet* sps = new AP4_HevcSequenceParameterSet;
             result = sps->Parse(nal_unit, nal_unit_size);
@@ -1373,8 +1373,8 @@ AP4_HevcFrameParser::Feed(const AP4_UI08* nal_unit,
             DBG_PRINTF_2("SPS sps_id=%d, vps_id=%d", sps->sps_seq_parameter_set_id, sps->sps_video_parameter_set_id);
             
             // keep the SPS with the NAL unit (this is optional)
-            AppendNalUnitData(nal_unit, nal_unit_size);
             CheckIfAccessUnitIsCompleted(access_unit_info);
+            AppendNalUnitData(nal_unit, nal_unit_size);
         } else if (nal_unit_type == AP4_HEVC_NALU_TYPE_VPS_NUT) {
             AP4_HevcVideoParameterSet* vps = new AP4_HevcVideoParameterSet;
             result = vps->Parse(nal_unit, nal_unit_size);
@@ -1388,8 +1388,8 @@ AP4_HevcFrameParser::Feed(const AP4_UI08* nal_unit,
             DBG_PRINTF_1("VPS vps_id=%d", vps->vps_video_parameter_set_id);
             
             // keep the VPS with the NAL unit (this is optional)
-            AppendNalUnitData(nal_unit, nal_unit_size);
             CheckIfAccessUnitIsCompleted(access_unit_info);
+            AppendNalUnitData(nal_unit, nal_unit_size);
         } else if (nal_unit_type == AP4_HEVC_NALU_TYPE_EOS_NUT ||
                    nal_unit_type == AP4_HEVC_NALU_TYPE_EOB_NUT) {
             CheckIfAccessUnitIsCompleted(access_unit_info);

@@ -114,26 +114,47 @@ public:
     void            SetDts(AP4_UI64 dts) { m_Dts = dts; }
 
     /**
-     * Get the CTS (Composition Time Stamp) of the sample in the timescale of the media
+     * Get the CTS (Composition Time Stamp) of the sample in the timescale of the media.
+     * The delta between the CTS and the DTS may be negative, in which case the
+     * composition time is before the decoding time.
      */
-    AP4_UI64        GetCts() const { return m_Dts+m_CtsDelta; }
+    AP4_UI64        GetCts() const { return m_Dts+(AP4_UI64)(AP4_SI64)m_CtsDelta; }
 
     /**
-     * Set the CTS (Composition Time Stamp) of the sample in the timescale of the media
+     * Set the CTS (Composition Time Stamp) of the sample in the timescale of the media.
+     * If the requested CTS is before the DTS of the sample, the difference is
+     * stored as a negative delta, and the CTS is effectively clamped to the DTS
+     * when read back.
      */
-    void            SetCts(AP4_UI64 cts) { m_CtsDelta = (cts > m_Dts) ? (AP4_UI32)(cts-m_Dts) : 0;  }
+    void            SetCts(AP4_UI64 cts) { m_CtsDelta = (cts > m_Dts) ? (AP4_SI32)(cts-m_Dts) : 0;  }
 
     /**
      * Get the CTS Delta (difference between the CTS (Composition Time Stamp) and DTS (Decoding Time Stamp)
      * of the sample in the timescale of the media.
+     * This value is a 32-bit unsigned representation of the signed delta: for a
+     * negative delta, the value is 2^32 + delta (for example, a delta of -1001
+     * is read back as 4294966295).
      */
-    AP4_UI32        GetCtsDelta() const { return m_CtsDelta; }
+    AP4_UI32        GetCtsDelta() const { return (AP4_UI32)m_CtsDelta; }
+
+    /**
+     * Get the signed CTS Delta (difference between the CTS (Composition Time Stamp) and
+     * DTS (Decoding Time Stamp) of the sample in the timescale of the media.
+     * Unlike GetCtsDelta(), this preserves the sign of negative deltas.
+     */
+    AP4_SI32        GetCtsDeltaSigned() const { return m_CtsDelta; }
 
     /**
      * Set the CTS Delta (difference between the CTS (Composition Time Stamp) and DTS (Decoding Time Stamp)
      * of the sample in the timescale of the media.
      */
     void            SetCtsDelta(AP4_UI32 delta) { m_CtsDelta = (AP4_SI32)delta;  }
+
+    /**
+     * Set the signed CTS Delta (difference between the CTS (Composition Time Stamp) and
+     * DTS (Decoding Time Stamp) of the sample in the timescale of the media.
+     */
+    void            SetCtsDeltaSigned(AP4_SI32 delta) { m_CtsDelta = delta;  }
 
     /**
      * Get the duration of the sample in the timescale of the media

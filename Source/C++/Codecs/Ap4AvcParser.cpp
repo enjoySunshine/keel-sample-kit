@@ -1095,8 +1095,8 @@ AP4_AvcFrameParser::Feed(const AP4_UI08* nal_unit,
                 DBG_PRINTF_2("PPS sps_id=%d, pps_id=%d\n", pps->seq_parameter_set_id, pps->pic_parameter_set_id);
                 
                 // keep the PPS with the NAL unit (this is optional)
-                AppendNalUnitData(nal_unit, nal_unit_size);
                 CheckIfAccessUnitIsCompleted(access_unit_info);
+                AppendNalUnitData(nal_unit, nal_unit_size);
             }
         } else if (nal_unit_type == AP4_AVC_NAL_UNIT_TYPE_SPS) {
             AP4_AvcSequenceParameterSet* sps = new AP4_AvcSequenceParameterSet;
@@ -1111,8 +1111,8 @@ AP4_AvcFrameParser::Feed(const AP4_UI08* nal_unit,
                 CheckIfAccessUnitIsCompleted(access_unit_info);
             }
         } else if (nal_unit_type == AP4_AVC_NAL_UNIT_TYPE_SEI) {
-            AppendNalUnitData(nal_unit, nal_unit_size);
             CheckIfAccessUnitIsCompleted(access_unit_info);
+            AppendNalUnitData(nal_unit, nal_unit_size);
             DBG_PRINTF_0("\n");
         } else if (nal_unit_type >= 14 && nal_unit_type <= 18) {
             CheckIfAccessUnitIsCompleted(access_unit_info);
